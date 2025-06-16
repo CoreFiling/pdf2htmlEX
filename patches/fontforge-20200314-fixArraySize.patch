@@ -1,0 +1,15 @@
+--- a/fontforge/tottfgpos.c
++++ b/fontforge/tottfgpos.c
+@@ -2091,10 +2091,10 @@
+ }
+ 
+ static uint16 *FigureInitialClasses(FPST *fpst) {
+-    uint16 *initial = malloc((fpst->nccnt+1)*sizeof(uint16));
++    uint16 *initial = malloc((fpst->rule_cnt+1)*sizeof(uint16));
+     int i, cnt, j;
+ 
+-    initial[fpst->nccnt] = 0xffff;
++    initial[fpst->rule_cnt] = 0xffff;
+     for ( i=cnt=0; i<fpst->rule_cnt; ++i ) {
+ 	for ( j=0; j<cnt ; ++j )
+ 	    if ( initial[j] == fpst->rules[i].u.class.nclasses[0] )

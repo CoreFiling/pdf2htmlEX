@@ -5,10 +5,25 @@
 # source ./buildScripts/reSourceVersionEnvs
 . ./buildScripts/reSourceVersionEnvs
 
+BUILD_TYPE="Release"
+
+while [ $# -ne 0 ]
+do
+  case "$1" in
+    "--debug" | "-d")
+      BUILD_TYPE="Debug" ;;
+    *)
+      echo "Unknown option '$1'"
+      exit 1 ;;
+  esac
+  shift
+done
+
 echo ""
 echo "-------------------------------------------------------------------"
 echo "BUILDING pdf2htmlEX (using gcc)"
 echo "  PDF2HTMLEX_VERSION = [$PDF2HTMLEX_VERSION]"
+echo "  BUILD_TYPE = $BUILD_TYPE"
 echo "-------------------------------------------------------------------"
 
 echo ""
@@ -19,5 +34,5 @@ cd pdf2htmlEX
 rm -rf build
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PDF2HTMLEX_PREFIX ..
+cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCMAKE_INSTALL_PREFIX=$PDF2HTMLEX_PREFIX ..
 make $MAKE_PARALLEL

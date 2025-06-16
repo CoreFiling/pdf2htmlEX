@@ -47,6 +47,8 @@ Unicode unicode_from_font (CharCode code, GfxFont * font)
         if(cname)
         {
             Unicode ou = globalParams->mapNameToUnicodeText(cname);
+            if(ou == '\t')
+                return ' ';
             if(!is_illegal_unicode(ou))
                 return ou;
         }
@@ -62,6 +64,8 @@ Unicode check_unicode(Unicode const * u, int len, CharCode code, GfxFont * font)
 
     if(len == 1)
     {
+        if(*u == '\t')
+            return ' ';
         if(!is_illegal_unicode(*u))
             return *u;
     }

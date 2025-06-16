@@ -15,21 +15,21 @@ echo ""
 
 set -ev
 
-sudo dnf $UNATTENDED install  \
-  sudo                        \
-  wget                        \
-  git                         \
-  pkg-config                  \
-  ruby                        \
-  autoconf                    \
-  libtool                     \
-  cmake                       \
-  make                        \
-  gcc                         \
-  g++                         \
-  dpkg                        \
-  dpkg-dev                    \
-  gettext                     \
-  java-1.8.0-openjdk-headless \
+sudo dnf $UNATTENDED install   \
+  sudo                         \
+  wget                         \
+  git                          \
+  pkg-config                   \
+  ruby                         \
+  autoconf                     \
+  libtool                      \
+  cmake                        \
+  make                         \
+  gcc                          \
+  g++                          \
+  dpkg                         \
+  dpkg-dev                     \
+  gettext                      \
+  java-1.11.0-openjdk-headless \
   jq
 

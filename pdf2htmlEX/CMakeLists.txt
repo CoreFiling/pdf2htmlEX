@@ -23,6 +23,10 @@ add_custom_target(dist
 
 find_package(PkgConfig)
 
+include_directories(
+  /usr/include/glib-2.0
+  /usr/lib/x86_64-linux-gnu/glib-2.0/include
+)
 
 # SINCE we have a very intimate relationship with a particular version of 
 # poppler... we explicitly describe the poppler include and library 
@@ -97,6 +101,7 @@ set(PDF2HTMLEX_LIBS ${PDF2HTMLEX_LIBS}
   ${LIB_INTL_LIBRARIES}
   ${CAIRO_LIBRARIES}
   -ljpeg
+  -lopenjp2
   -lpng
   -lfontconfig
   -lfreetype

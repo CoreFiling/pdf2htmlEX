@@ -27,7 +27,7 @@ namespace pdf2htmlEX {
  *         00(NUL)--09(\t)--0A(\n)--0D(\r)--20(SP)--7F(DEL)--9F(APC)--A0(NBSP)--AD(SHY)--061C(ALM)--1361(Ethiopic word space)
  * webkit:   [--------------------------------)        [------------------)       [-]
  * moz:      [--------------------------------)        [---------]                          [-]
- * p2h:      [--------------------------------)        [------------------]       [-]       [-]         [-]
+ * p2h:      [--------------------------------)        [------------------)       [-]       [-]         [-]
  *
  *         200B(ZWSP)--200C(ZWNJ)--200D(ZWJ)--200E(LRM)--200F(RLM)--2028(LSEP)--2029(PSEP)--202A(LRE)--202E(RL0)--2066(LRI)--2069(PDI)
  * webkit:   [-----------------------------------------------]                                 [----------]
@@ -38,9 +38,6 @@ namespace pdf2htmlEX {
  * webkit:                                      [-]           [-]
  * moz:
  * p2h:         [------------------]            [-]           [-]          [-----------------]
- *
- * Note: 0xA0 (no-break space) affects word-spacing; and if "white-space:pre" is specified,
- * \n and \r can break line, \t can shift text, so they are considered illegal.
  *
  * Resources (retrieved at 2015-03-16)
  * * webkit
@@ -58,7 +55,7 @@ namespace pdf2htmlEX {
  */
 inline bool is_illegal_unicode(Unicode c)
 {
-    return (c < 0x20) || (c >= 0x7F && c <= 0xA0) || (c == 0xAD)
+    return (c < 0x20) || (c >= 0x7F && c < 0xA0) || (c == 0xAD)
             || (c >= 0x300 && c <= 0x36f) // DCRH Combining diacriticals
             || (c >= 0x1ab0 && c <= 0x1aff) // DCRH Combining diacriticals
             || (c >= 0x1dc0 && c <= 0x1dff) // DCRH Combining diacriticals

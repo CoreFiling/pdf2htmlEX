@@ -2,6 +2,9 @@
 
 # This shell script builds the latest poppler
 
+# source buildScripts/reSourceVersionEnvs
+. buildScripts/reSourceVersionEnvs
+
 echo ""
 echo "-------------------------------------------------------------------"
 echo "BUILDING Poppler (using CMake)"
@@ -11,10 +14,20 @@ echo ""
 set -ev
 
 cd poppler
+
+# Apply any patches required for poppler raw sources before we make
+#
+for APATCHFILE in $(ls ../patches/poppler-$POPPLER_VERSION-*)
+do
+  echo "patching poppler using [$APATCHFILE]" 
+  patch -p 1 < $APATCHFILE
+done
+
+rm -rf build
 mkdir build
 cd build
 cmake                                       \
-  -DCMAKE_BUILD_TYPE=Release                \
+  -DCMAKE_BUILD_TYPE=${BUILD_TYPE:-Release} \
   -DCMAKE_INSTALL_PREFIX=$PDF2HTMLEX_PREFIX \
   -DENABLE_UNSTABLE_API_ABI_HEADERS=OFF     \
   -DBUILD_GTK_TESTS=OFF                     \
@@ -27,7 +40,7 @@ cmake                                       \
   -DENABLE_GOBJECT_INTROSPECTION=OFF        \
   -DENABLE_GTK_DOC=OFF                      \
   -DENABLE_QT5=OFF                          \
-  -DENABLE_LIBOPENJPEG="none"               \
+  -DENABLE_LIBOPENJPEG="openjpeg2"          \
   -DENABLE_CMS="none"                       \
   -DENABLE_DCTDECODER="libjpeg"             \
   -DENABLE_LIBCURL=OFF                      \

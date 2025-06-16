@@ -137,7 +137,7 @@ void SplashBackgroundRenderer::embed_image(int pageno)
 // end of hack
 	
     // dump the background image only when it is not empty
-    if((xmin <= xmax) && (ymin <= ymax))
+    if((xmin < xmax) && (ymin < ymax))
     {
         {
             auto fn = html_renderer->str_fmt("%s/bg%x.%s", (param.embed_image ? param.tmp_dir : param.dest_dir).c_str(), pageno, format.c_str());
@@ -185,8 +185,8 @@ void SplashBackgroundRenderer::embed_image(int pageno)
 // There might be mem leak when exception is thrown !
 void SplashBackgroundRenderer::dump_image(const char * filename, int x1, int y1, int x2, int y2)
 {
-    int width = x2 - x1 + 1;
-    int height = y2 - y1 + 1;
+    int width = x2 - x1;
+    int height = y2 - y1;
     if((width <= 0) || (height <= 0))
         throw "Bad metric for background image";
 

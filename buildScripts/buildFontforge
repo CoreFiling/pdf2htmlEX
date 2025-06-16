@@ -15,12 +15,13 @@ set -ev
 
 cd fontforge
 
+rm -rf build
 mkdir build
 
 cd build
 
-cmake        		                        \
-  -DCMAKE_BUILD_TYPE=Release                \
+cmake        		                            \
+  -DCMAKE_BUILD_TYPE=${BUILD_TYPE:-Release} \
   -DCMAKE_INSTALL_PREFIX=$PDF2HTMLEX_PREFIX \
   -DBUILD_SHARED_LIBS:BOOL=OFF              \
   -DENABLE_GUI:BOOL=OFF                     \
@@ -52,11 +53,11 @@ cmake        		                        \
 
 # Apply any patches required for fontforge raw sources before we make
 #
-#for APATCHFILE in $(ls ../patches/fontforge-$FONTFORGE_VERSION-*)
-#do
-#  echo "patching fontforge using [$APATCHFILE]" 
-#  patch -p 1 < $APATCHFILE
-#done
+for APATCHFILE in $(ls ../patches/fontforge-$FONTFORGE_VERSION-*)
+do
+  echo "patching fontforge using [$APATCHFILE]" 
+  patch -p 1 < $APATCHFILE
+done
 
 make $MAKE_PARALLEL
 

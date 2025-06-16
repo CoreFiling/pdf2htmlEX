@@ -1,0 +1,31 @@
+{
+  "tasks": [
+    {
+      "type": "cppbuild",
+      "label": "C/C++: Build pdf2htmlEX (release)",
+      "command": "buildScripts/buildPdf2htmlEX",
+      "args": [],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "type": "cppbuild",
+      "label": "C/C++: Build pdf2htmlEX (debug)",
+      "command": "buildScripts/buildPdf2htmlEX",
+      "args": ["--debug"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+  ],
+  "version": "2.0.0"
+}
