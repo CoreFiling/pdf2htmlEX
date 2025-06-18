@@ -10,6 +10,8 @@
 #include <ostream>
 #include <cmath>
 #include <algorithm>
+#include <unordered_map>
+#include <set>
 #include <vector>
 #include <functional>
 
@@ -36,6 +38,8 @@ using std::flush;
 using std::ostream;
 using std::max;
 using std::min_element;
+using std::unordered_map;
+using std::set;
 using std::vector;
 using std::abs;
 using std::cerr;
@@ -299,6 +303,42 @@ void HTMLRenderer::endPage() {
 void HTMLRenderer::pre_process(PDFDoc * doc)
 {
     preprocessor.process(doc);
+
+    if (param.tounicode >= 0)
+    {
+        auto font_ids = preprocessor.get_used_font_ids();
+        for (auto id : font_ids)
+        {
+            auto codepoint_usages = preprocessor.get_codepoint_usages(id);
+            auto codepoint_map = preprocessor.get_codepoint_map(id);
+            auto len = codepoint_usages.size();
+
+            // Most used first
+            auto cmp = [=](int a, int b) { return codepoint_usages[a] - codepoint_usages[b]; };
+            unordered_map<Unicode, set<int, decltype(cmp)>> used_codes;
+
+            size_t num_fonts = 1;
+            for (size_t code = 0; code < len; code++)
+            {
+                if (codepoint_usages[code])
+                {
+                    auto u = codepoint_map[code];
+                    const auto & p = used_codes.insert(make_pair(u, set<int, decltype(cmp)>(cmp)));
+                    p.first->second.insert(code);
+                    num_fonts = max(num_fonts, p.first->second.size());
+                }
+            }
+
+            auto & copy_mappings = font_copy_mappings.insert(make_pair(id, vector<uint8_t>(len, 0xff))).first->second;
+
+            for (const auto & p : used_codes)
+            {
+                auto idx = 0;
+                for (auto code : p.second)
+                    copy_mappings[code] = idx++;
+            }
+        }
+    }
 
     /*
      * determine scale factors

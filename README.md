@@ -4,7 +4,16 @@
 
 # Differences from upstream pdf2htmlEX: 
 
-This is my branch of pdf2htmlEX which aims to allow an open collaboration to help keep the project active. A number of changes and improvements have been incorperated from other forks:
+This is based off https://github.com/pdf2htmlEX/pdf2htmlEX.
+
+Changes in this fork:
+
+* Fixes to allow building on more modern Ubuntu distributions
+* A couple of additional memory corruption bug fixes to fontforge
+* Replace CMap mapping implementation to split up duplicated font codepoint mappings rather than dropping them
+  * Built-in understood font encodings also take preference over sometimes-incorrect CMaps, to match how other products seem to work.
+
+Changes from upstream in that fork include:
 
 * Lots of bugs fixes, mostly of edge cases
 * Integration of latest Cairo code

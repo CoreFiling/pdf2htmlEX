@@ -12,6 +12,7 @@
 #include <sstream>
 #include <cctype>
 #include <unordered_set>
+#include <vector>
 
 #include <GlobalParams.h>
 #include <fofi/FoFiTrueType.h>
@@ -44,6 +45,7 @@ namespace pdf2htmlEX {
 
 using std::min;
 using std::unordered_set;
+using std::vector;
 using std::cerr;
 using std::endl;
 
@@ -202,7 +204,7 @@ string HTMLRenderer::dump_type3_font (GfxFont * font, FontInfo & info)
     FT_Init_FreeType(&ft_lib);
     CairoFontEngine font_engine(ft_lib); 
     auto * cur_font = font_engine.getFont(font, cur_doc, true, xref);
-    auto used_map = preprocessor.get_code_map(hash_ref(font->getID()));
+    auto usage_map = preprocessor.get_codepoint_usages(hash_ref(font->getID()));
 
     //calculate transformed metrics
     const double * font_bbox = font->getFontBBox();
@@ -232,7 +234,7 @@ string HTMLRenderer::dump_type3_font (GfxFont * font, FontInfo & info)
     // dump each glyph into svg and combine them
     for(int code = 0; code < 256; ++code)
     {
-        if(!used_map[code]) continue;
+        if(!usage_map[code]) continue;
 
         cairo_surface_t * surface = nullptr;
 
@@ -410,17 +412,17 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
     Gfx8BitFont * font_8bit = nullptr;
     GfxCIDFont * font_cid = nullptr;
 
+    long long fn_id = hash_ref(font->getID());
+
     string suffix = get_suffix(filepath);
     for(auto & c : suffix)
         c = tolower(c);
 
     /*
-     * if parm->tounicode is 0, try the provided tounicode map first
+     * if param->tounicode is 0, try the provided tounicode map first
      */
     info.use_tounicode = (param.tounicode >= 0);
     bool has_space = false;
-
-    const char * used_map = nullptr;
 
     info.em_size = ffw_get_em_size();
 
@@ -448,7 +450,8 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
         return;
     }
 
-    used_map = preprocessor.get_code_map(hash_ref(font->getID()));
+    const auto & used_map = preprocessor.get_codepoint_usages(fn_id);
+    const auto & copy_map = font_copy_mappings[fn_id];
 
     /*
      * Step 1
@@ -504,7 +507,8 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
 
             for(int i = 0; i < 256; ++i)
             {
-                if(!used_map[i]) continue;
+                if(!used_map[i] || copy_map[i] != info.copy)
+                    continue;
 
                 auto cn = font_8bit->getCharName(i);
                 if(cn == nullptr)
@@ -523,7 +527,7 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
                         {
                             name_conflict_warned = true;
                             //TODO: may be resolved using advanced font properties?
-                            cerr << "Warning: encoding conflict detected in font: " << hex << info.id << dec << endl;
+                            cerr << "Warning: encoding name conflict detected in font: " << hex << info.id << dec << endl;
                         }
                     }
                 }
@@ -592,7 +596,6 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
         }
 
         unordered_set<int> codeset;
-        bool name_conflict_warned = false;
 
         auto ctu = font->getToUnicode();
         // NOTE: Poppler has changed its effective ABI
@@ -611,10 +614,9 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
         /*
          * Traverse all possible codes
          */
-        bool retried = false; // avoid infinite loop
         for(int cur_code = 0; cur_code <= maxcode; ++cur_code)
         {
-            if(!used_map[cur_code])
+            if(!used_map[cur_code] || copy_map[cur_code] != info.copy)
                 continue;
 
             /*
@@ -650,41 +652,7 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
                 u = unicode_from_font(cur_code, font);
             }
 
-            if(codeset.insert(u).second)
-            {
-                cur_mapping[mapped_code] = u;
-            }
-            else
-            {
-                // collision detected
-                if(param.tounicode == 0)
-                {
-                    // in auto mode, just drop the tounicode map
-                    if(!retried)
-                    {
-                        cerr << "ToUnicode CMap is not valid and got dropped for font: " << hex << info.id << dec << endl;
-                        retried = true;
-                        codeset.clear();
-                        info.use_tounicode = false;
-                        std::fill(cur_mapping.begin(), cur_mapping.end(), -1);
-                        std::fill(width_list.begin(), width_list.end(), -1);
-                        cur_code = -1;
-                        if(param.debug)
-                        {
-                            map_outf.close();
-                            map_outf.open(map_filename);
-                            output_map_file_header(map_outf);
-                        }
-                        continue;
-                    }
-                }
-                if(!name_conflict_warned)
-                {
-                    name_conflict_warned = true;
-                    //TODO: may be resolved using advanced font properties?
-                    cerr << "Warning: encoding confliction detected in font: " << hex << info.id << dec << endl;
-                }
-            }
+            cur_mapping[mapped_code] = u;
 
             {
                 double cur_width = 0;
@@ -838,23 +806,24 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
 }
 
 
-const FontInfo * HTMLRenderer::install_font(GfxFont * font)
+const FontInfo * HTMLRenderer::install_font(GfxFont * font, uint8_t copy_num)
 {
     assert(sizeof(long long) == 2*sizeof(int));
                 
     long long fn_id = (font == nullptr) ? 0 : hash_ref(font->getID());
 
-    auto iter = font_info_map.find(fn_id);
+    auto iter = font_info_map.find({ fn_id, copy_num });
     if(iter != font_info_map.end())
         return &(iter->second);
 
     long long new_fn_id = font_info_map.size(); 
 
-    auto cur_info_iter = font_info_map.insert(make_pair(fn_id, FontInfo())).first;
+    auto cur_info_iter = font_info_map.insert(make_pair(FontCopyId(fn_id, copy_num), FontInfo())).first;
 
     FontInfo & new_font_info = cur_info_iter->second;
+    new_font_info.copy = copy_num;
     new_font_info.id = new_fn_id;
-    new_font_info.use_tounicode = true;
+    new_font_info.use_tounicode = param.tounicode >= 0;
     new_font_info.font_size_scale = 1.0;
 
     if(font == nullptr)

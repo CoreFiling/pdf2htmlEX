@@ -17,6 +17,7 @@
 #include "Preprocessor.h"
 #include "util/misc.h"
 #include "util/const.h"
+#include "util/unicode.h"
 
 namespace pdf2htmlEX {
 
@@ -24,6 +25,7 @@ using std::cerr;
 using std::endl;
 using std::flush;
 using std::max;
+using std::vector;
 
 Preprocessor::Preprocessor(const Param & param)
     : OutputDev()
@@ -31,14 +33,12 @@ Preprocessor::Preprocessor(const Param & param)
     , max_width(0)
     , max_height(0)
     , cur_font_id(0)
-    , cur_code_map(nullptr)
+    , cur_codepoint_usages(nullptr)
+    , cur_codepoint_map(nullptr)
 { }
 
 Preprocessor::~Preprocessor(void)
-{
-    for(auto & p : code_maps)
-        delete [] p.second;
-}
+{ }
 
 void Preprocessor::process(PDFDoc * doc)
 {
@@ -74,20 +74,20 @@ void Preprocessor::drawChar(GfxState *state, double x, double y,
 
     if(fn_id != cur_font_id)
     {
+        int len = font->isCIDFont() ? 0x10000 : 0x100;
         cur_font_id = fn_id;
-        auto p = code_maps.insert(std::make_pair(cur_font_id, (char*)nullptr));
-        if(p.second)
+        if (codepoint_usages.count(cur_font_id) == 0)
         {
-            // this is a new font
-            int len = font->isCIDFont() ? 0x10000 : 0x100;
-            p.first->second = new char [len];
-            memset(p.first->second, 0, len * sizeof(char));
+            codepoint_usages.insert(std::make_pair(cur_font_id, vector<int>(len, 0)));
+            codepoint_maps.insert(std::make_pair(cur_font_id, vector<Unicode>(len, -1)));
         }
 
-        cur_code_map = p.first->second;
+        cur_codepoint_usages = &codepoint_usages.find(cur_font_id)->second;
+        cur_codepoint_map = &codepoint_maps.find(cur_font_id)->second;
     }
 
-    cur_code_map[code] = 1;
+    (*cur_codepoint_usages)[code]++;
+    (*cur_codepoint_map)[code] = check_unicode(u, uLen, code, font);
 }
 
 void Preprocessor::startPage(int pageNum, GfxState *state)
@@ -101,10 +101,23 @@ void Preprocessor::startPage(int pageNum, GfxState *state, XRef * xref)
     max_height = max<double>(max_height, state->getPageHeight());
 }
 
-const char * Preprocessor::get_code_map (long long font_id) const
+const vector<int> & Preprocessor::get_codepoint_usages (long long font_id) const
 {
-    auto iter = code_maps.find(font_id);
-    return (iter == code_maps.end()) ? nullptr : (iter->second);
+    return codepoint_usages.find(font_id)->second;
+}
+
+const vector<Unicode> & Preprocessor::get_codepoint_map (long long font_id) const
+{
+    return codepoint_maps.find(font_id)->second;
+}
+
+const vector<long long> Preprocessor::get_used_font_ids() const
+{
+    vector<long long> ids;
+    ids.reserve(codepoint_usages.size());
+    for (const auto & p : codepoint_usages)
+        ids.push_back(p.first);
+    return ids;
 }
 
 } // namespace pdf2htmlEX

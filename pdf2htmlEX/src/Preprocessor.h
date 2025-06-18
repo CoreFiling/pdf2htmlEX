@@ -46,7 +46,9 @@ public:
     virtual void startPage(int pageNum, GfxState *state);
     virtual void startPage(int pageNum, GfxState *state, XRef * xref);
 
-    const char * get_code_map (long long font_id) const;
+    const std::vector<long long> get_used_font_ids() const;
+    const std::vector<int> & get_codepoint_usages (long long font_id) const;
+    const std::vector<Unicode> & get_codepoint_map (long long font_id) const;
     double get_max_width (void) const { return max_width; }
     double get_max_height (void) const { return max_height; }
 
@@ -56,9 +58,11 @@ protected:
     double max_width, max_height;
 
     long long cur_font_id;
-    char * cur_code_map;
+    std::vector<int> * cur_codepoint_usages;
+    std::vector<Unicode> * cur_codepoint_map;
 
-    std::unordered_map<long long, char*> code_maps;
+    std::unordered_map<long long, std::vector<int>> codepoint_usages;
+    std::unordered_map<long long, std::vector<Unicode>> codepoint_maps;
 };
 
 } // namespace pdf2htmlEX

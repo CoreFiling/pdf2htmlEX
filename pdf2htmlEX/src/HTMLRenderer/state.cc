@@ -112,7 +112,7 @@ void HTMLRenderer::reset_state()
     memcpy(cur_text_tm, ID_MATRIX, sizeof(cur_text_tm));
 
     // reset html_state
-    cur_text_state.font_info = install_font(nullptr);
+    cur_text_state.font_info = install_font(nullptr, 0);
     cur_text_state.font_size = 0;
     cur_text_state.fill_color.transparent = true;
     cur_text_state.stroke_color.transparent = true;
@@ -165,6 +165,15 @@ void set_line_state(NewLineState & cur_ls, NewLineState new_ls)
         cur_ls = new_ls;
 }
 
+void HTMLRenderer::set_font_copy(uint8_t copy)
+{
+    if (copy != font_copy)
+    {
+        font_copy = copy;
+        font_changed = true;
+    }
+}
+
 void HTMLRenderer::check_state_change(GfxState * state)
 {
     // DEPENDENCY WARNING
@@ -207,7 +216,7 @@ void HTMLRenderer::check_state_change(GfxState * state)
     // font name & size
     if(all_changed || font_changed)
     {
-        const FontInfo * new_font_info = install_font(state->getFont());
+        const FontInfo * new_font_info = install_font(state->getFont(), font_copy);
 
         if(!(new_font_info->id == cur_text_state.font_info->id))
         {

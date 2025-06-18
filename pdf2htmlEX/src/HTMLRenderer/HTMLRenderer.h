@@ -68,6 +68,7 @@
 #include "DrawingTracer.h"
 
 #include "util/const.h"
+#include "util/FontCopyId.h"
 #include "util/misc.h"
 
 
@@ -225,10 +226,11 @@ protected:
      * local font: to be substituted with a local (client side) font
      */
     ////////////////////////////////////////////////////
+    void set_font_copy(uint8_t copy);
     std::string dump_embedded_font(GfxFont * font, FontInfo & info);
     std::string dump_type3_font(GfxFont * font, FontInfo & info);
     void embed_font(const std::string & filepath, GfxFont * font, FontInfo & info, bool get_metric_only = false);
-    const FontInfo * install_font(GfxFont * font);
+    const FontInfo * install_font(GfxFont * font, uint8_t copy_num);
     void install_embedded_font(GfxFont * font, FontInfo & info);
     void install_external_font (GfxFont * font, FontInfo & info);
     void export_remote_font(const FontInfo & info, const std::string & suffix, GfxFont * font);
@@ -300,6 +302,7 @@ protected:
     bool ctm_changed;
     bool rise_changed;
     bool font_changed;
+    uint8_t font_copy;
     bool text_pos_changed; 
     bool text_mat_changed;
     bool fill_color_changed;
@@ -331,7 +334,7 @@ protected:
     // styles & resources
     ////////////////////////////////////////////////////
     // managers store values actually used in HTML (i.e. scaled)
-    std::unordered_map<long long, FontInfo> font_info_map;
+    std::unordered_map<FontCopyId, FontInfo> font_info_map;
     AllStateManager all_manager;
     HTMLTextState cur_text_state;
     HTMLLineState cur_line_state;
@@ -353,6 +356,8 @@ protected:
     std::vector<int> width_list; // width of each char
 
     Preprocessor preprocessor;
+
+    std::map<long long, std::vector<uint8_t>> font_copy_mappings;
 
     // manage temporary files
     TmpFiles tmp_files;

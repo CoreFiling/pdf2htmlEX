@@ -14,6 +14,8 @@ namespace pdf2htmlEX {
 struct FontInfo
 {
     long long id;
+    // Which copy index of the font this is (for fonts that need duplicate unicode target codepoints splitting up)
+    uint8_t copy;
     bool use_tounicode;
     int em_size;
     double space_width;

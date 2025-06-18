@@ -40,19 +40,20 @@ void HTMLRenderer::drawString(GfxState * state, const GooString * s)
     // For type 3 fonts, due to the font matrix, still it's hard to show it on HTML
 
 
-    if(state->getFont()
-        && ( (state->getFont()->getWMode())
-            || ((state->getFont()->getType() == fontType3) && (!param.process_type3))
+    if(font
+        && ( (font->getWMode())
+            || ((font->getType() == fontType3) && (!param.process_type3))
             || (state->getRender() >= 4)
            )
       )
     {
         // We still want to go through the loop to ensure characters are added to the covered_chars array
         drawChars = false;
-//printf("%d / %d / %d\n", state->getFont()->getWMode(), (state->getFont()->getType() == fontType3), state->getRender());
+//printf("%d / %d / %d\n", font->getWMode(), (font->getType() == fontType3), state->getRender());
     }
 
     // see if the line has to be closed due to state change
+    set_font_copy(0);
     check_state_change(state);
     prepare_text_line(state);
 
@@ -142,6 +143,10 @@ void HTMLRenderer::drawString(GfxState * state, const GooString * s)
         }
         else
         {
+            set_font_copy(font_copy_mappings[hash_ref(state->getFont()->getID())][code]);
+            check_state_change(state);
+            prepare_text_line(state);
+            
             if((param.decompose_ligature) && (uLen > 1) && none_of(u, u+uLen, is_illegal_unicode))
             {
                 html_text_page.get_cur_line()->append_unicodes(u, uLen, ddx);
