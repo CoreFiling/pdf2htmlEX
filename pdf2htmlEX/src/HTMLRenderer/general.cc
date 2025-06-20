@@ -304,7 +304,7 @@ void HTMLRenderer::pre_process(PDFDoc * doc)
 {
     preprocessor.process(doc);
 
-    if (param.tounicode >= 0)
+    if (param.ignoretounicode == 0)
     {
         auto font_ids = preprocessor.get_used_font_ids();
         for (auto id : font_ids)

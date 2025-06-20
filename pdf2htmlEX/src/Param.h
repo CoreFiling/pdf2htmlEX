@@ -64,7 +64,7 @@ struct Param
     double space_threshold;
     double font_size_multiplier;
     int space_as_offset;
-    int tounicode;
+    int ignoretounicode;
     int optimize_text;
 
     // background image

@@ -419,9 +419,9 @@ void HTMLRenderer::embed_font(const string & filepath, GfxFont * font, FontInfo 
         c = tolower(c);
 
     /*
-     * if param->tounicode is 0, try the provided tounicode map first
+     * if param->ignoretounicode is 0, try the provided tounicode map first
      */
-    info.use_tounicode = (param.tounicode >= 0);
+    info.use_tounicode = (param.ignoretounicode == 0);
     bool has_space = false;
 
     info.em_size = ffw_get_em_size();
@@ -823,7 +823,7 @@ const FontInfo * HTMLRenderer::install_font(GfxFont * font, uint8_t copy_num)
     FontInfo & new_font_info = cur_info_iter->second;
     new_font_info.copy = copy_num;
     new_font_info.id = new_fn_id;
-    new_font_info.use_tounicode = param.tounicode >= 0;
+    new_font_info.use_tounicode = param.ignoretounicode == 0;
     new_font_info.font_size_scale = 1.0;
 
     if(font == nullptr)

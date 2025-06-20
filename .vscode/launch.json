@@ -9,7 +9,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/pdf2htmlEX/build/pdf2htmlEX",
-      "args": ["--embed-javascript=0", "--process-outline=0", "--printing=0", "--bg-format=svg", "--process-annotation=1", "--decompose-ligature=1", "--tounicode=1", "input.pdf", "output.html"],
+      "args": ["--embed-javascript=0", "--process-outline=0", "--printing=0", "--bg-format=svg", "--process-annotation=1", "--decompose-ligature=1", "input.pdf", "output.html"],
       "stopAtEntry": false,
       "cwd": "/tmp",
       "environment": [],

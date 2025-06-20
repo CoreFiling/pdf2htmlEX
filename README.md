@@ -9,9 +9,11 @@ This is based off https://github.com/pdf2htmlEX/pdf2htmlEX.
 Changes in this fork:
 
 * Fixes to allow building on more modern Ubuntu distributions
+* Allow a few other obviously valid unicode characters to be kept as they are
 * A couple of additional memory corruption bug fixes to fontforge
 * Replace CMap mapping implementation to split up duplicated font codepoint mappings rather than dropping them
   * Built-in understood font encodings also take preference over sometimes-incorrect CMaps, to match how other products seem to work.
+  * The `--tounicode` ternary flag has been replaced with `--ignore-tounicode` as there is no "forcing" behaviour needed any more.
 
 Changes from upstream in that fork include:
 
