@@ -1,0 +1,60 @@
+#!/bin/sh
+
+# This shell script gets, unpacks the latest Poppler source code, applies the existing patches to it and then generates a new patch with all new changes.
+
+# source buildScripts/reSourceVersionEnvs
+. buildScripts/reSourceVersionEnvs
+
+if [ "$#" != "1" ]
+then
+  echo "Usage: $0 <patch_name>"
+  echo "  Generates a new patch file [patches/poppler-$POPPLER_VERSION-<patch_name>.patch] with all new local changes to Poppler."
+  exit 1
+fi
+
+NEW_PATCH="poppler-$POPPLER_VERSION-$1.patch"
+
+if [ -f "patches/$NEW_PATCH" ]
+then
+  echo "ERROR: [patches/$NEW_PATCH] already exists. Delete this file first if you wish to replace it."
+  exit 1
+fi
+
+
+echo ""
+echo "-------------------------------------------------------------------"
+echo "Generating Poppler patch from Poppler sources"
+echo "  (POPPLER_VERSION: [$POPPLER_VERSION])"
+echo "-------------------------------------------------------------------"
+echo ""
+
+
+echo "Getting poppler version: $POPPLER_VERSION"
+
+rm -rf $POPPLER_VERSION.tar.xz
+rm -rf .poppler-tmp
+
+set -e
+
+wget -q --show-progress https://poppler.freedesktop.org/$POPPLER_VERSION.tar.xz
+tar xf $POPPLER_VERSION.tar.xz
+mv $POPPLER_VERSION .poppler-tmp
+
+# Apply existing patches to our temporary copy
+cd .poppler-tmp
+for APATCHFILE in $(ls ../patches/poppler-$POPPLER_VERSION-*)
+do
+  echo "Patching poppler using [$APATCHFILE]" 
+  patch -p 1 < $APATCHFILE
+done
+
+cd ..
+echo "Writing new patch to [patches/$NEW_PATCH]"
+diff --exclude=build -u -r .poppler-tmp poppler > patches/$NEW_PATCH || true
+
+# Clean up the diff and make it more git-like:
+#  - Remove "diff ... -r foo bar" header
+#  - Replace ".poppler-tmp" prefix with "a"
+#  - Replace "poppler" prefix with "b"
+#  - Strip off the timestamp suffixes
+sed -i patches/$NEW_PATCH -e '/^diff /d ; s/^--- \.poppler-tmp/--- a/ ; s/^+++ poppler/+++ b/ ; /^\(---\|+++\)/s/\t.*$//'

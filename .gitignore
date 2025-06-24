@@ -5,6 +5,7 @@ brewFormula
 fontforge
 *.tar.*
 poppler
+.poppler-tmp
 build
 compile_commands.json
 CMakeCache.txt
