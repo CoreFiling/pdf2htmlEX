@@ -164,19 +164,18 @@ void HTMLTextLine::dump_text(ostream & out)
         // it will be closed by the first state
     }
 
-    std::vector<State*> stack;
+    // The currently open style elements' CSS states
+    std::vector<State*> style_stack;
     // a special safeguard in the bottom
-    stack.push_back(nullptr);
+    style_stack.push_back(nullptr);
 
     //accumulated horizontal offset;
     double dx = 0;
 
-    // whenever a negative offset appears, we should not pop out that <span>
-    // otherwise the effect of negative margin-left would disappear
-    size_t last_text_pos_with_negative_offset = 0;
     size_t cur_text_idx = 0;
 
     auto cur_offset_iter = offsets.begin();
+    // state_iter1 is the current state, state_iter2 is the next (needed to know how much to text write later)
     for(auto state_iter2 = states.begin(), state_iter1 = state_iter2++; 
             state_iter1 != states.end(); 
             ++state_iter1, ++state_iter2)
@@ -187,7 +186,7 @@ void HTMLTextLine::dump_text(ostream & out)
             double vertical_align = state_iter1->vertical_align;
             int best_cost = State::HASH_ID_COUNT + 1;
             // we have a nullptr at the beginning, so no need to check for rend
-            for(auto iter = stack.rbegin(); *iter; ++iter)
+            for(auto iter = style_stack.rbegin(); *iter; ++iter)
             {
                 int cost = state_iter1->diff(**iter);
                 if(!equal(vertical_align,0))
@@ -195,10 +194,10 @@ void HTMLTextLine::dump_text(ostream & out)
 
                 if(cost < best_cost)
                 {
-                    while(stack.back() != *iter)
+                    while(style_stack.back() != *iter)
                     {
-                        stack.back()->end(out);
-                        stack.pop_back();
+                        style_stack.back()->end(out);
+                        style_stack.pop_back();
                     }
                     best_cost = cost;
                     state_iter1->vertical_align = vertical_align;
@@ -207,17 +206,13 @@ void HTMLTextLine::dump_text(ostream & out)
                         break;
                 }
 
-                // cannot go further
-                if((*iter)->start_idx <= last_text_pos_with_negative_offset)
-                    break;
-
                 vertical_align += (*iter)->vertical_align;
             }
             // 
             state_iter1->ids[State::VERTICAL_ALIGN_ID] = all_manager.vertical_align.install(state_iter1->vertical_align);
-            // export the diff between *state_iter1 and stack.back()
-            state_iter1->begin(out, stack.back());
-            stack.push_back(&*state_iter1);
+            // export the diff between *state_iter1 and style_stack.back()
+            state_iter1->begin(out, style_stack.back());
+            style_stack.push_back(&*state_iter1);
         }
 
         // [state_iter1->start_idx, text_idx2) are covered by the current state
@@ -266,9 +261,6 @@ void HTMLTextLine::dump_text(ostream & out)
 
                         if(!equal(actual_offset, 0))
                         {
-                            if(is_positive(-actual_offset))
-                                last_text_pos_with_negative_offset = cur_text_idx;
-
                             double threshold = state_iter1->em_size() * (param.space_threshold);
 
                             out << "<span class=\"" << CSS::WHITESPACE_CN
@@ -294,10 +286,10 @@ void HTMLTextLine::dump_text(ostream & out)
     }
 
     // we have a nullptr in the bottom
-    while(stack.back())
+    while(style_stack.back())
     {
-        stack.back()->end(out);
-        stack.pop_back();
+        style_stack.back()->end(out);
+        style_stack.pop_back();
     }
 
     out << "</div>";
@@ -658,7 +650,7 @@ void HTMLTextLine::State::begin (ostream & out, const State * prev_state)
     {
         // prev_state == nullptr
         // which means this is the first state of the line
-        // there should be a open pending <div> left there
+        // there should be a open pending `<div class="` left there
         // it is not necessary to output vertical align
         long long cur_mask = 0xff;
         for(int i = 0; i < HASH_ID_COUNT; ++i, cur_mask<<=8)
@@ -692,7 +684,7 @@ void HTMLTextLine::State::hash(void)
     hash_value = 0;
     for(int i = 0; i < ID_COUNT; ++i)
     {
-        hash_value = (hash_value << 8) | (ids[i] & 0xff);
+        hash_value |= (ids[i] & 0xff) << (i * 8);
     }
 }
 
