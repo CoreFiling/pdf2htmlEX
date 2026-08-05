@@ -1,0 +1,188 @@
+--- a/poppler/CharCodeToUnicode.cc
++++ b/poppler/CharCodeToUnicode.cc
+@@ -265,7 +265,7 @@
+ 
+     ctu = new CharCodeToUnicode(nullptr);
+     const char *p = buf->c_str();
+-    ctu->parseCMap1(&getCharFromString, &p, nBits);
++    ctu->parseCMap1(&getCharFromString, &p, nBits, true);
+     return ctu;
+ }
+ 
+@@ -276,7 +276,7 @@
+ 
+     ctu = new CharCodeToUnicode(nullptr);
+     if ((f = globalParams->findToUnicodeFile(fileName))) {
+-        ctu->parseCMap1(&getCharFromFile, f, nBits);
++        ctu->parseCMap1(&getCharFromFile, f, nBits, true);
+         fclose(f);
+     } else {
+         error(errSyntaxError, -1, "Couldn't find ToUnicode CMap file for '{0:t}'", fileName);
+@@ -284,13 +284,13 @@
+     return ctu;
+ }
+ 
+-void CharCodeToUnicode::mergeCMap(const GooString *buf, int nBits)
++void CharCodeToUnicode::mergeCMap(const GooString *buf, int nBits, bool preferCMap)
+ {
+     const char *p = buf->c_str();
+-    parseCMap1(&getCharFromString, &p, nBits);
++    parseCMap1(&getCharFromString, &p, nBits, preferCMap);
+ }
+ 
+-void CharCodeToUnicode::parseCMap1(int (*getCharFunc)(void *), void *data, int nBits)
++void CharCodeToUnicode::parseCMap1(int (*getCharFunc)(void *), void *data, int nBits, bool preferCMap)
+ {
+     PSTokenizer *pst;
+     char tok1[256], tok2[256], tok3[256];
+@@ -308,7 +308,7 @@
+             if (tok1[0] == '/') {
+                 name = new GooString(tok1 + 1);
+                 if ((f = globalParams->findToUnicodeFile(name))) {
+-                    parseCMap1(&getCharFromFile, f, nBits);
++                    parseCMap1(&getCharFromFile, f, nBits, preferCMap);
+                     fclose(f);
+                 } else {
+                     error(errSyntaxError, -1, "Couldn't find ToUnicode CMap file for '{0:t}'", name);
+@@ -337,7 +337,7 @@
+                 if (code1 > maxCode) {
+                     error(errSyntaxWarning, -1, "Invalid entry in bfchar block in ToUnicode CMap");
+                 }
+-                addMapping(code1, tok2 + 1, n2 - 2, 0);
++                addMapping(code1, tok2 + 1, n2 - 2, 0, preferCMap);
+             }
+             pst->getToken(tok1, sizeof(tok1), &n1);
+         } else if (!strcmp(tok2, "beginbfrange")) {
+@@ -375,7 +375,7 @@
+                         }
+                         if (tok1[0] == '<' && tok1[n1 - 1] == '>') {
+                             tok1[n1 - 1] = '\0';
+-                            addMapping(code1 + i, tok1 + 1, n1 - 2, 0);
++                            addMapping(code1 + i, tok1 + 1, n1 - 2, 0, preferCMap);
+                         } else {
+                             error(errSyntaxWarning, -1, "Illegal entry in bfrange block in ToUnicode CMap");
+                         }
+@@ -384,7 +384,7 @@
+                 } else if (tok3[0] == '<' && tok3[n3 - 1] == '>') {
+                     tok3[n3 - 1] = '\0';
+                     for (i = 0; code1 <= code2; ++code1, ++i) {
+-                        addMapping(code1, tok3 + 1, n3 - 2, i);
++                        addMapping(code1, tok3 + 1, n3 - 2, i, preferCMap);
+                     }
+ 
+                 } else {
+@@ -399,7 +399,7 @@
+     delete pst;
+ }
+ 
+-void CharCodeToUnicode::addMapping(CharCode code, char *uStr, int n, int offset)
++void CharCodeToUnicode::addMapping(CharCode code, char *uStr, int n, int offset, bool preferCMap)
+ {
+     CharCode oldLen, i;
+     Unicode u;
+@@ -431,6 +431,9 @@
+             error(errSyntaxWarning, -1, "Illegal entry in ToUnicode CMap");
+             return;
+         }
++        if (!preferCMap && map[code]) {
++            return;
++        }
+         map[code] = u + offset;
+         if (!UnicodeIsValid(map[code])) {
+             map[code] = 0xfffd;
+--- a/poppler/CharCodeToUnicode.h
++++ b/poppler/CharCodeToUnicode.h
+@@ -70,7 +70,7 @@
+ 
+     // Parse a ToUnicode CMap for an 8- or 16-bit font, merging it into
+     // <this>.
+-    void mergeCMap(const GooString *buf, int nBits);
++    void mergeCMap(const GooString *buf, int nBits, bool preferCMap);
+ 
+     ~CharCodeToUnicode();
+ 
+@@ -99,8 +99,8 @@
+     CharCode getLength() const { return mapLen; }
+ 
+ private:
+-    void parseCMap1(int (*getCharFunc)(void *), void *data, int nBits);
+-    void addMapping(CharCode code, char *uStr, int n, int offset);
++    void parseCMap1(int (*getCharFunc)(void *), void *data, int nBits, bool preferCMap);
++    void addMapping(CharCode code, char *uStr, int n, int offset, bool preferCMap);
+     CharCodeToUnicode();
+     CharCodeToUnicode(GooString *tagA);
+     CharCodeToUnicode(GooString *tagA, Unicode *mapA, CharCode mapLenA, bool copyMap, CharCodeToUnicodeString *sMapA, int sMapLenA, int sMapSizeA);
+--- a/poppler/GfxFont.cc
++++ b/poppler/GfxFont.cc
+@@ -604,7 +604,7 @@
+     }
+ }
+ 
+-CharCodeToUnicode *GfxFont::readToUnicodeCMap(Dict *fontDict, int nBits, CharCodeToUnicode *ctu)
++CharCodeToUnicode *GfxFont::readToUnicodeCMap(Dict *fontDict, int nBits, CharCodeToUnicode *ctu, bool preferCMap)
+ {
+     GooString *buf;
+ 
+@@ -616,7 +616,7 @@
+     obj1.getStream()->fillGooString(buf);
+     obj1.streamClose();
+     if (ctu) {
+-        ctu->mergeCMap(buf, nBits);
++        ctu->mergeCMap(buf, nBits, preferCMap);
+     } else {
+         ctu = CharCodeToUnicode::parseCMap(buf, nBits);
+     }
+@@ -1311,11 +1311,18 @@
+         }
+     }
+ 
+-    // pass 2: try to fill in the missing chars, looking for ligatures, numeric
++    // pass 2: merge in a ToUnicode CMap, if there is one
++    // This overrides the existing map only if it was not based on properly a pre-defined encoding.
++    // Otherwise, the ToUnicode CMap takes precedence.
++    // In either case the other encoding info is allowed to fill in any holes.
++    readToUnicodeCMap(fontDict, 16, ctu, !hasEncoding);
++    
++    // pass 3: try to fill in the missing chars, looking for ligatures, numeric
+     // references and variants
+     if (missing) {
++        const Unicode *pu;
+         for (int code = 0; code < 256; ++code) {
+-            if (!toUnicode[code]) {
++            if (!ctu->mapToUnicode(code, &pu)) {
+                 if ((charName = enc[code]) && strcmp(charName, ".notdef")
+                     && (n = parseCharName(charName, uBuf, sizeof(uBuf) / sizeof(*uBuf),
+                                           false, // don't check simple names (pass 1)
+@@ -1334,12 +1341,6 @@
+         }
+     }
+ 
+-    // merge in a ToUnicode CMap, if there is one -- this overwrites
+-    // existing entries in ctu, i.e., the ToUnicode CMap takes
+-    // precedence, but the other encoding info is allowed to fill in any
+-    // holes
+-    readToUnicodeCMap(fontDict, 16, ctu);
+-
+     //----- get the character widths -----
+ 
+     // initialize all widths
+@@ -1789,7 +1790,7 @@
+     collection = obj2.getString()->copy()->append('-')->append(obj3.getString());
+ 
+     // look for a ToUnicode CMap
+-    if (!(ctu = readToUnicodeCMap(fontDict, 16, nullptr))) {
++    if (!(ctu = readToUnicodeCMap(fontDict, 16, nullptr, true))) {
+         ctuUsesCharCode = false;
+ 
+         // use an identity mapping for the "Adobe-Identity" and
+--- a/poppler/GfxFont.h
++++ b/poppler/GfxFont.h
+@@ -304,7 +304,7 @@
+ 
+     static GfxFontType getFontType(XRef *xref, Dict *fontDict, Ref *embID);
+     void readFontDescriptor(XRef *xref, Dict *fontDict);
+-    CharCodeToUnicode *readToUnicodeCMap(Dict *fontDict, int nBits, CharCodeToUnicode *ctu);
++    CharCodeToUnicode *readToUnicodeCMap(Dict *fontDict, int nBits, CharCodeToUnicode *ctu, bool preferCMap);
+     static GfxFontLoc *getExternalFont(GooString *path, bool cid);
+ 
+     GooString *tag; // PDF font tag
